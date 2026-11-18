@@ -1,0 +1,241 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: deny all reads and writes by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isUpdateAdmin() {
+      return isVerifiedUser()
+        && request.auth.token.email is string
+        && request.auth.token.email == 'aminmiami97@gmail.com';
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll([
+          'uid',
+          'displayName',
+          'email',
+          'preferredExecutor',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid',
+          'displayName',
+          'email',
+          'photoURL',
+          'preferredExecutor',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.uid is string
+        && data.uid == request.auth.uid
+        && data.uid.size() >= 1
+        && data.uid.size() <= 128
+        && data.uid.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.displayName is string
+        && data.displayName.size() >= 1
+        && data.displayName.size() <= 120
+        && data.email is string
+        && data.email.size() >= 3
+        && data.email.size() <= 200
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500))
+        && data.preferredExecutor is string
+        && (data.preferredExecutor == 'solara' || data.preferredExecutor == 'xeno')
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidScriptUpdate(data, updateId) {
+      return data.keys().hasAll([
+          'id',
+          'version',
+          'codename',
+          'title',
+          'description',
+          'category',
+          'published',
+          'authorUid',
+          'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'id',
+          'version',
+          'codename',
+          'title',
+          'description',
+          'category',
+          'published',
+          'authorUid',
+          'createdAt'
+        ])
+        && data.id is string
+        && data.id == updateId
+        && isValidId(data.id)
+        && data.version is string
+        && data.version.size() >= 5
+        && data.version.size() <= 24
+        && data.version.matches('^[0-9]+\\.[0-9]+\\.[0-9]+$')
+        && data.codename is string
+        && data.codename.size() >= 1
+        && data.codename.size() <= 60
+        && data.title is string
+        && data.title.size() >= 3
+        && data.title.size() <= 100
+        && data.description is string
+        && data.description.size() >= 8
+        && data.description.size() <= 500
+        && data.category is string
+        && (data.category == 'Added' || data.category == 'Improved' || data.category == 'Fixed' || data.category == 'Security')
+        && data.published is bool
+        && data.published == true
+        && data.authorUid is string
+        && data.authorUid == request.auth.uid
+        && isValidId(data.authorUid)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidScriptConfig(data, configId) {
+      return data.keys().hasAll([
+          'id',
+          'version',
+          'releaseTitle',
+          'releaseMessage',
+          'code',
+          'published',
+          'updatedByUid',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id',
+          'version',
+          'releaseTitle',
+          'releaseMessage',
+          'code',
+          'published',
+          'updatedByUid',
+          'updatedAt'
+        ])
+        && data.id is string
+        && data.id == configId
+        && isValidId(data.id)
+        && data.version is string
+        && data.version.size() >= 1
+        && data.version.size() <= 40
+        && data.releaseTitle is string
+        && data.releaseTitle.size() >= 3
+        && data.releaseTitle.size() <= 120
+        && data.releaseMessage is string
+        && data.releaseMessage.size() >= 8
+        && data.releaseMessage.size() <= 400
+        && data.code is string
+        && data.code.size() >= 10
+        && data.code.size() <= 200000
+        && data.published is bool
+        && data.published == true
+        && data.updatedByUid is string
+        && data.updatedByUid == request.auth.uid
+        && isValidId(data.updatedByUid)
+        && data.updatedAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && isOwner(userId);
+      allow list: if false;
+
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName',
+          'photoURL',
+          'preferredExecutor',
+          'updatedAt'
+        ]);
+
+      allow delete: if isSignedIn() && isValidId(userId) && isOwner(userId);
+    }
+
+    match /updates/{updateId} {
+      allow get: if isValidId(updateId) && existing().published == true;
+      allow list: if existing().published == true;
+
+      allow create: if isUpdateAdmin()
+        && isValidId(updateId)
+        && isValidScriptUpdate(incoming(), updateId)
+        && incoming().createdAt == request.time;
+
+      allow update: if false;
+
+      allow delete: if isUpdateAdmin() && isValidId(updateId);
+    }
+
+    match /scriptConfig/{configId} {
+      allow get: if isValidId(configId) && (resource == null || existing().published == true);
+      allow list: if false;
+
+      allow create: if isUpdateAdmin()
+        && isValidId(configId)
+        && configId == 'live'
+        && isValidScriptConfig(incoming(), configId)
+        && incoming().updatedAt == request.time;
+
+      allow update: if isUpdateAdmin()
+        && isValidId(configId)
+        && configId == 'live'
+        && isValidScriptConfig(incoming(), configId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'version',
+          'releaseTitle',
+          'releaseMessage',
+          'code',
+          'published',
+          'updatedByUid',
+          'updatedAt'
+        ]);
+
+      allow delete: if false;
+    }
+  }
+}

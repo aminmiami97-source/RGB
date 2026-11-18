@@ -1,0 +1,214 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated RGB user account created with Google Sign-In.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID matching the document ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name from Google account.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified Google account email address.",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Optional Google profile avatar URL.",
+          "maxLength": 500
+        },
+        "preferredExecutor": {
+          "type": "string",
+          "enum": ["solara", "xeno"],
+          "description": "User preferred Roblox executor target."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the account was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the latest account update."
+        }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "email",
+        "preferredExecutor",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ScriptUpdate": {
+      "title": "ScriptUpdate",
+      "description": "Public RGB script changelog entry authored exclusively by the authorized publisher.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Document ID for the script update.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "version": {
+          "type": "string",
+          "description": "Semantic version string (e.g. 1.0.0).",
+          "minLength": 5,
+          "maxLength": 24,
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "codename": {
+          "type": "string",
+          "description": "Short release label.",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "title": {
+          "type": "string",
+          "description": "Concise title of the RGB script change.",
+          "minLength": 3,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed explanation of the RGB script change.",
+          "minLength": 8,
+          "maxLength": 500
+        },
+        "category": {
+          "type": "string",
+          "enum": ["Added", "Improved", "Fixed", "Security"],
+          "description": "Change classification."
+        },
+        "published": {
+          "type": "boolean",
+          "description": "Indicates the update is visible in the public changelog."
+        },
+        "authorUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the authorized publisher.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the update was published."
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "codename",
+        "title",
+        "description",
+        "category",
+        "published",
+        "authorUid",
+        "createdAt"
+      ]
+    },
+    "ScriptConfig": {
+      "title": "ScriptConfig",
+      "description": "Live published RGB Lua script and release notification metadata editable exclusively by aminmiami97@gmail.com.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Singleton document ID ('live').",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "version": {
+          "type": "string",
+          "description": "Current RGB script version label (e.g. 1.4.3 or v1.4.3 [BETA]).",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "releaseTitle": {
+          "type": "string",
+          "description": "Short release notification headline shown to all users.",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "releaseMessage": {
+          "type": "string",
+          "description": "Brief release notification summary.",
+          "minLength": 8,
+          "maxLength": 400
+        },
+        "code": {
+          "type": "string",
+          "description": "Official RGB Lua script source code.",
+          "minLength": 10,
+          "maxLength": 200000
+        },
+        "published": {
+          "type": "boolean",
+          "description": "Whether the live script is publicly readable."
+        },
+        "updatedByUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the authorized admin who updated the script.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the latest script update."
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "releaseTitle",
+        "releaseMessage",
+        "code",
+        "published",
+        "updatedByUid",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Private user account documents keyed by Firebase Auth UID."
+    },
+    "/updates/{updateId}": {
+      "schema": {
+        "$ref": "#/entities/ScriptUpdate"
+      },
+      "description": "Public RGB script updates log writable only by aminmiami97@gmail.com."
+    },
+    "/scriptConfig/{configId}": {
+      "schema": {
+        "$ref": "#/entities/ScriptConfig"
+      },
+      "description": "Live RGB Lua script source and release announcement writable only by aminmiami97@gmail.com."
+    }
+  }
+}

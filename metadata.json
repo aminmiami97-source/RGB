@@ -1,0 +1,8 @@
+{
+  "name": "RGB",
+  "description": "RGB Roblox script hub, real-time update dashboard, and one-click Solara & Xeno script installer.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
